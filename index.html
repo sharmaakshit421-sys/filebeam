@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Transfer files between devices using your private GitHub repository as the backend."/>
+  <title>FileBeam — Transfer Files via GitHub</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+    /* ── Light mode (default) ── */
+    :root {
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --border: #e2e5ec;
+      --accent: #3b6df5;
+      --accent2: #8b5cf6;
+      --success: #10b981;
+      --error: #ef4444;
+      --text: #1a1d26;
+      --text-secondary: #6b7280;
+      --muted: #9ca3af;
+      --card: #ffffff;
+      --card-hover: #f9fafb;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.08);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --radius-xs: 6px;
+    }
+
+    /* ── Dark mode ── */
+    .dark {
+      --bg: #0d0f14;
+      --surface: #161920;
+      --border: #252830;
+      --accent: #4f8fff;
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --error: #f87171;
+      --text: #e8eaf0;
+      --text-secondary: #9ca3af;
+      --muted: #6b7280;
+      --card: #1a1d26;
+      --card-hover: #1e2130;
+      --shadow: 0 1px 3px rgba(0,0,0,0.2);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 100;
+    }
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--accent); }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .badge {
+      font-size: 10px;
+      font-family: 'Space Mono', monospace;
+      background: rgba(79,143,255,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(79,143,255,0.25);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+    }
+    .btn-theme {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-theme:hover {
+      border-color: var(--accent);
+      background: rgba(79,143,255,0.06);
+    }
+    .btn-clear {
+      font-size: 11px;
+      color: var(--error);
+      background: none;
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-clear:hover {
+      background: rgba(248,113,113,0.08);
+    }
+
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 32px 24px 60px;
+      width: 100%;
+    }
+
+    .page-title {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+    .page-title em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ── Config card ── */
+    .config-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+    }
+    .config-card h2 {
+      font-size: 12px;
+      font-family: 'Space Mono', monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field.full { grid-column: 1 / -1; }
+    label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+    input, select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,143,255,0.12);
+    }
+    input::placeholder { color: var(--muted); }
+    .help {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      line-height: 1.5;
+    }
+    .help a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    .help a:hover { text-decoration: underline; }
+
+    .config-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .btn-save {
+      padding: 10px 22px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-test {
+      padding: 10px 22px;
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid rgba(79,143,255,0.3);
+      border-radius: var(--radius-sm);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-test:hover {
+      background: rgba(79,143,255,0.06);
+      border-color: var(--accent);
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .tab {
+      flex: 1;
+      padding: 9px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.2s;
+      border: none;
+      background: none;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .tab.active {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Upload zone ── */
+    .upload-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+    }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.25s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(79,143,255,0.04);
+    }
+    .drop-zone.drag-over {
+      border-style: solid;
+      background: rgba(79,143,255,0.08);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+      border: none;
+      padding: 0;
+    }
+    .drop-icon {
+      font-size: 34px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .drop-text { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .drop-sub { font-size: 12px; color: var(--muted); }
+
+    /* ── Folder selector ── */
+    .folder-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .folder-selector label {
+      white-space: nowrap;
+      margin: 0;
+      font-size: 12px;
+    }
+    .folder-selector input {
+      flex: 1;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+    .btn-new-folder {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(79,143,255,0.1);
+      color: var(--accent);
+      border: 1px solid rgba(79,143,255,0.25);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-new-folder:hover { background: rgba(79,143,255,0.18); }
+
+    /* ── File queue ── */
+    #file-queue { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .file-item {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .file-icon { font-size: 18px; flex-shrink: 0; }
+    .file-info { flex: 1; min-width: 0; }
+    .file-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-size { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+    .file-status { font-size: 11px; font-weight: 600; white-space: nowrap; }
+    .status-waiting { color: var(--muted); }
+    .status-uploading { color: var(--accent); }
+    .status-done { color: var(--success); }
+    .status-error { color: var(--error); }
+    .status-retrying { color: var(--accent2); }
+
+    .progress-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    .file-remove {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(248,113,113,0.1);
+      color: var(--error);
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .file-remove:hover { background: rgba(248,113,113,0.2); }
+
+    .btn-upload {
+      margin-top: 16px;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: 9px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.2px;
+    }
+    .btn-upload:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-upload:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── Files list ── */
+    .files-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      transition: all 0.3s;
+    }
+    .files-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .files-header h2 { font-size: 15px; font-weight: 700; }
+    .files-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .search-input {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: var(--radius-xs);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      width: 180px;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); outline: none; }
+    .search-input::placeholder { color: var(--muted); }
+    .btn-refresh {
+      font-size: 12px;
+      color: var(--accent);
+      background: none;
+      border: 1px solid rgba(79,143,255,0.3);
+      border-radius: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-refresh:hover { background: rgba(79,143,255,0.08); }
+    .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .stored-file {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      margin-bottom: 6px;
+      transition: all 0.2s;
+    }
+    .stored-file:hover {
+      border-color: rgba(79,143,255,0.3);
+      background: var(--card-hover);
+    }
+    .stored-file .file-info { flex: 1; min-width: 0; }
+    .file-folder {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+    .file-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .btn-dl {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(52,211,153,0.1);
+      color: var(--success);
+      border: 1px solid rgba(52,211,153,0.25);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      text-decoration: none;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-dl:hover { background: rgba(52,211,153,0.2); }
+    .btn-copy {
+      padding: 6px 10px;
+      font-size: 11px;
+      background: rgba(79,143,255,0.08);
+      color: var(--accent);
+      border: 1px solid rgba(79,143,255,0.2);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-copy:hover { background: rgba(79,143,255,0.16); }
+    .btn-del {
+      padding: 6px 10px;
+      font-size: 11px;
+      background: rgba(248,113,113,0.08);
+      color: var(--error);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-del:hover { background: rgba(248,113,113,0.18); }
+    .btn-del:disabled, .btn-copy:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .empty-state .icon { font-size: 36px; display: block; margin-bottom: 10px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 18px;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 999;
+      transform: translateY(8px);
+      max-width: 360px;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { background: rgba(52,211,153,0.15); color: var(--success); border: 1px solid rgba(52,211,153,0.3); }
+    #toast.error { background: rgba(248,113,113,0.15); color: var(--error); border: 1px solid rgba(248,113,113,0.3); }
+    #toast.info { background: rgba(79,143,255,0.15); color: var(--accent); border: 1px solid rgba(79,143,255,0.3); }
+
+    /* ── Setup banner ── */
+    #setup-banner {
+      background: rgba(167,139,250,0.08);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .dark #setup-banner { color: var(--accent2); }
+    #setup-banner strong { color: var(--text); }
+    #setup-banner ol { margin: 6px 0 0 18px; }
+    #setup-banner li { margin-bottom: 3px; }
+    #setup-banner a { color: var(--accent); }
+    #setup-banner code {
+      background: var(--surface);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+    }
+
+    /* ── Confirm dialog ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.show { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      max-width: 380px;
+      width: 90%;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.show .modal { transform: scale(1); }
+    .modal h3 { font-size: 15px; margin-bottom: 8px; }
+    .modal p { font-size: 13px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .modal-actions button {
+      padding: 8px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-xs);
+      cursor: pointer;
+      font-family: 'Space Grotesk', sans-serif;
+      transition: all 0.2s;
+    }
+    .btn-cancel {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-cancel:hover { background: var(--card-hover); }
+    .btn-confirm {
+      background: var(--error);
+      color: #fff;
+      border: none;
+    }
+    .btn-confirm:hover { opacity: 0.9; }
+
+    /* ── Spinner ── */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .fields { grid-template-columns: 1fr; }
+      .page-title { font-size: 22px; }
+      header { padding: 12px 16px; }
+      main { padding: 20px 16px 40px; }
+      .files-actions { width: 100%; }
+      .search-input { flex: 1; width: auto; }
+      .file-actions { flex-wrap: wrap; }
+      .config-actions { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">File<span>Beam</span></div>
+  <div class="header-right">
+    <span class="badge">GitHub-powered</span>
+    <button class="btn-theme" id="theme-btn" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+    <button class="btn-clear" onclick="clearConfig()">Clear Config</button>
+  </div>
+</header>
+
+<main>
+  <h1 class="page-title">Transfer files <em>without restrictions</em></h1>
+  <p class="subtitle">Upload on your locked-down device → download anywhere. Files live securely in your private GitHub repository.</p>
+
+  <!-- Setup instructions (shown until configured) -->
+  <div id="setup-banner">
+    <strong>⚡ One-time setup</strong> — enter your GitHub details below:
+    <ol>
+      <li>Create a free account at <a href="https://github.com" target="_blank">github.com</a></li>
+      <li>Create a <strong>new private repository</strong> (e.g. <code>my-transfers</code>)</li>
+      <li>Go to <strong>Settings → Developer settings → Personal access tokens → Tokens (classic)</strong></li>
+      <li>Generate a token with <strong>repo</strong> scope checked</li>
+      <li>Paste your details below and click Save</li>
+    </ol>
+  </div>
+
+  <!-- Config -->
+  <div class="config-card">
+    <h2>// GitHub Config</h2>
+    <div class="fields">
+      <div class="field">
+        <label>GitHub Username</label>
+        <input id="gh-user" type="text" placeholder="octocat" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label>Repository Name</label>
+        <input id="gh-repo" type="text" placeholder="my-transfers" autocomplete="off" />
+      </div>
+      <div class="field full">
+        <label>Personal Access Token</label>
+        <input id="gh-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        <p class="help">Token stored only in your browser's localStorage — never shared. <a href="https://github.com/settings/tokens/new?scopes=repo&description=FileBeam" target="_blank">Generate token →</a></p>
+      </div>
+    </div>
+    <div class="config-actions">
+      <button class="btn-save" onclick="saveConfig()">Save Config</button>
+      <button class="btn-test" onclick="testConnection()">Test Connection</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="upload" onclick="switchTab('upload', this)">⬆ Upload</button>
+    <button class="tab" data-tab="files" onclick="switchTab('files', this)">📁 My Files</button>
+  </div>
+
+  <!-- Upload tab -->
+  <div id="tab-upload" class="upload-card">
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" id="file-input" multiple onchange="handleFiles(this.files)" />
+      <span class="drop-icon">📂</span>
+      <div class="drop-text">Drop files here or click to browse</div>
+      <div class="drop-sub">Any file type · Max 100MB per file (GitHub limit)</div>
+    </div>
+
+    <div class="folder-selector">
+      <label>📁 Folder:</label>
+      <input type="text" id="folder-name" placeholder="default" value="transfers" />
+      <button class="btn-new-folder" onclick="setFolder()">Use</button>
+    </div>
+
+    <div id="file-queue"></div>
+    <button class="btn-upload" id="upload-btn" onclick="uploadAll()" disabled>Upload Files</button>
+  </div>
+
+  <!-- Files tab -->
+  <div id="tab-files" style="display:none">
+    <div class="files-card">
+      <div class="files-header">
+        <h2>Stored Files</h2>
+        <div class="files-actions">
+          <input class="search-input" id="search-files" type="text" placeholder="Search files…" oninput="filterFiles()" />
+          <button class="btn-refresh" id="btn-refresh" onclick="loadFiles()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="files-list"><div class="empty-state"><span class="icon">📭</span>No files yet.<br>Upload some first!</div></div>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<!-- Confirm modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-msg">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="modal-confirm" onclick="">Delete</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  FileBeam v2.0 — Open source. Token stored locally. Files in your repo.
+</footer>
+
+<script>
+  // ── State ──
+  let config = { user: '', repo: '', token: '' };
+  let pendingFiles = [];
+  let allStoredFiles = [];
+  let currentFolder = 'transfers';
+
+  // ── Theme ──
+  function toggleTheme() {
+    document.body.classList.toggle('dark');
+    const btn = document.getElementById('theme-btn');
+    const isDark = document.body.classList.contains('dark');
+    btn.textContent = isDark ? '☀️' : '🌙';
+    localStorage.setItem('filebeam_theme', isDark ? 'dark' : 'light');
+  }
+
+  // ── Init ──
+  window.onload = () => {
+    // Theme
+    if (localStorage.getItem('filebeam_theme') === 'dark') {
+      document.body.classList.add('dark');
+      document.getElementById('theme-btn').textContent = '☀️';
+    }
+
+    // Config
+    const saved = localStorage.getItem('filebeam_config');
+    if (saved) {
+      try { config = JSON.parse(saved); } catch(e) {}
+      document.getElementById('gh-user').value = config.user || '';
+      document.getElementById('gh-repo').value = config.repo || '';
+      document.getElementById('gh-token').value = config.token || '';
+      if (config.user && config.repo && config.token) {
+        document.getElementById('setup-banner').style.display = 'none';
+      }
+    }
+
+    setupDragDrop();
+  };
+
+  // ── Config ──
+  function saveConfig() {
+    config = {
+      user: document.getElementById('gh-user').value.trim(),
+      repo: document.getElementById('gh-repo').value.trim(),
+      token: document.getElementById('gh-token').value.trim(),
+    };
+    if (!config.user || !config.repo || !config.token) {
+      toast('Please fill in all fields', 'error'); return;
+    }
+    // Basic validation
+    if (config.token.length < 20) {
+      toast('Token looks too short — double check it', 'error'); return;
+    }
+    localStorage.setItem('filebeam_config', JSON.stringify(config));
+    document.getElementById('setup-banner').style.display = 'none';
+    toast('Config saved!', 'success');
+  }
+
+  function clearConfig() {
+    showModal('Clear Config?', 'This will remove your GitHub credentials from this browser. You can set them up again anytime.', () => {
+      localStorage.removeItem('filebeam_config');
+      config = { user: '', repo: '', token: '' };
+      document.getElementById('gh-user').value = '';
+      document.getElementById('gh-repo').value = '';
+      document.getElementById('gh-token').value = '';
+      document.getElementById('setup-banner').style.display = '';
+      toast('Config cleared', 'info');
+    });
+  }
+
+  function getHeaders() {
+    return {
+      'Authorization': `Bearer ${config.token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+    };
+  }
+
+  async function testConnection() {
+    if (!config.token) { toast('Save your config first', 'error'); return; }
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Testing…';
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${config.user}/${config.repo}`,
+        { headers: getHeaders() }
+      );
+      if (res.ok) {
+        toast('Connected! Repository found.', 'success');
+      } else if (res.status === 404) {
+        toast('Repository not found. Check username/repo name.', 'error');
+      } else if (res.status === 401) {
+        toast('Authentication failed. Check your token.', 'error');
+      } else {
+        const err = await res.json();
+        toast(err.message || 'Connection error', 'error');
+      }
+    } catch (e) {
+      toast('Network error: ' + e.message, 'error');
+    }
+    btn.disabled = false;
+    btn.textContent = 'Test Connection';
+  }
+
+  // ── Folder ──
+  function setFolder() {
+    const val = document.getElementById('folder-name').value.trim();
+    currentFolder = val || 'transfers';
+    toast(`Upload folder: ${currentFolder}`, 'info');
+  }
+
+  // ── Drag & drop ──
+  function setupDragDrop() {
+    const zone = document.getElementById('drop-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('drag-over');
+      handleFiles(e.dataTransfer.files);
+    });
+  }
+
+  function handleFiles(files) {
+    if (!config.token) {
+      toast('Save your GitHub config first', 'error'); return;
+    }
+    [...files].forEach(f => {
+      if (pendingFiles.find(p => p.file.name === f.name)) return;
+      if (f.size > 100 * 1024 * 1024) {
+        toast(`${f.name} exceeds 100MB limit`, 'error'); return;
+      }
+      pendingFiles.push({ file: f, status: 'waiting', retries: 0 });
+    });
+    renderQueue();
+    document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
+    document.getElementById('file-input').value = '';
+  }
+
+  function renderQueue() {
+    const q = document.getElementById('file-queue');
+    q.innerHTML = '';
+    pendingFiles.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'file-item';
+      el.id = `qi-${i}`;
+      el.innerHTML = `
+        <span class="file-icon">${fileIcon(p.file.name)}</span>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(p.file.name)}</div>
+          <div class="file-size">${formatSize(p.file.size)}</div>
+          <div class="progress-bar"><div class="progress-fill" id="prog-${i}"></div></div>
+        </div>
+        <span class="file-status status-${p.status}" id="stat-${i}">${statusLabel(p.status, p.retries)}</span>
+        <button class="file-remove" onclick="removeFile(${i})" title="Remove">×</button>
+      `;
+      q.appendChild(el);
+    });
+  }
+
+  function removeFile(idx) {
+    pendingFiles.splice(idx, 1);
+    renderQueue();
+    document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
+  }
+
+  function statusLabel(s, retries) {
+    const labels = {
+      waiting: 'Waiting',
+      uploading: 'Uploading…',
+      done: '✓ Done',
+      error: '✗ Failed',
+      retrying: `Retrying (${retries}x)…`,
+    };
+    return labels[s] || s;
+  }
+
+  // ── Upload ──
+  async function uploadAll() {
+    if (!config.token) { toast('Save your config first', 'error'); return; }
+    const btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+
+    for (let i = 0; i < pendingFiles.length; i++) {
+      const p = pendingFiles[i];
+      if (p.status === 'done') continue;
+      await uploadFile(p, i);
+    }
+
+    // Clean up done files from queue
+    pendingFiles = pendingFiles.filter(p => p.status !== 'done');
+    renderQueue();
+    btn.disabled = false;
+    btn.textContent = 'Upload Files';
+
+    if (pendingFiles.length === 0) {
+      toast('All uploads complete!', 'success');
+    }
+  }
+
+  async function uploadFile(p, idx, maxRetries = 3) {
+    p.status = 'uploading';
+    setStatus(idx, 'uploading');
+    setProgress(idx, 10);
+
+    try {
+      const content = await toBase64(p.file);
+      setProgress(idx, 40);
+
+      const timestamp = Date.now();
+      const safeName = p.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${currentFolder}/${timestamp}_${safeName}`;
+      const url = `https://api.github.com/repos/${config.user}/${config.repo}/contents/${path}`;
+
+      setProgress(idx, 60);
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          message: `FileBeam upload: ${safeName} (${timestamp})`,
+          content: content.split(',')[1],
+        })
+      });
+
+      setProgress(idx, 90);
+
+      if (res.ok) {
+        setProgress(idx, 100);
+        p.status = 'done';
+        setStatus(idx, 'done');
+      } else if (res.status === 422 && p.retries < maxRetries) {
+        // Conflict — file exists, retry with different timestamp
+        p.retries++;
+        setStatus(idx, 'retrying');
+        await sleep(1000);
+        await uploadFile(p, idx, maxRetries);
+      } else if (res.status === 413) {
+        p.status = 'error';
+        setStatus(idx, 'error');
+        toast(`${p.file.name} is too large for GitHub`, 'error');
+      } else {
+        const err = await res.json().catch(() => ({}));
+        p.status = 'error';
+        setStatus(idx, 'error');
+        toast(`${p.file.name}: ${err.message || 'Upload failed'}`, 'error');
+      }
+    } catch (e) {
+      if (p.retries < maxRetries) {
+        p.retries++;
+        setStatus(idx, 'retrying');
+        await sleep(2000 * p.retries);
+        await uploadFile(p, idx, maxRetries);
+      } else {
+        p.status = 'error';
+        setStatus(idx, 'error');
+        toast(`${p.file.name}: ${e.message}`, 'error');
+      }
+    }
+  }
+
+  function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function setStatus(i, s) {
+    const el = document.getElementById(`stat-${i}`);
+    if (el) {
+      const p = pendingFiles[i];
+      el.className = `file-status status-${s}`;
+      el.textContent = statusLabel(s, p ? p.retries : 0);
+    }
+  }
+  function setProgress(i, pct) {
+    const el = document.getElementById(`prog-${i}`);
+    if (el) el.style.width = pct + '%';
+  }
+
+  // ── Load files ──
+  async function loadFiles() {
+    if (!config.token) { toast('Save your config first', 'error'); return; }
+    const list = document.getElementById('files-list');
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Loading…';
+    allStoredFiles = [];
+
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${config.user}/${config.repo}/contents/${currentFolder}`,
+        { headers: getHeaders() }
+      );
+
+      if (res.status === 404) {
+        list.innerHTML = '<div class="empty-state"><span class="icon">📭</span>No files yet.<br>Upload some first!</div>';
+        allStoredFiles = [];
+        filterFiles();
+        return;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        list.innerHTML = `<div class="empty-state"><span class="icon">⚠️</span>Error: ${err.message || 'Check your config and repo access.'}</div>`;
+        allStoredFiles = [];
+        filterFiles();
+        return;
+      }
+
+      const files = await res.json();
+      if (!Array.isArray(files) || files.length === 0) {
+        list.innerHTML = '<div class="empty-state"><span class="icon">📭</span>No files yet.<br>Upload some first!</div>';
+        allStoredFiles = [];
+        filterFiles();
+        return;
+      }
+
+      allStoredFiles = files
+        .filter(f => f.type === 'file')
+        .sort((a, b) => b.name.localeCompare(a.name));
+
+      renderFiles();
+    } catch (e) {
+      list.innerHTML = `<div class="empty-state"><span class="icon">⚠️</span>Error loading files.<br>${e.message}</div>`;
+      allStoredFiles = [];
+    }
+
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh';
+  }
+
+  function renderFiles() {
+    const list = document.getElementById('files-list');
+    const search = document.getElementById('search-files').value.toLowerCase();
+
+    const filtered = allStoredFiles.filter(f => {
+      const name = f.name.replace(/^\d+_/, '').toLowerCase();
+      return !search || name.includes(search);
+    });
+
+    if (filtered.length === 0 && allStoredFiles.length > 0) {
+      list.innerHTML = '<div class="empty-state">No files match your search.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    filtered.forEach(f => {
+      const name = f.name.replace(/^\d+_/, ''); // strip timestamp prefix
+      const cleanName = name.replace(/_/g, ' '); // clean display
+      const div = document.createElement('div');
+      div.className = 'stored-file';
+      div.innerHTML = `
+        <span class="file-icon">${fileIcon(name)}</span>
+        <div class="file-info">
+          <div class="file-name">${escapeHtml(cleanName)}</div>
+          <div class="file-size">${formatSize(f.size)}</div>
+        </div>
+        <div class="file-actions">
+          <a class="btn-dl" href="${f.download_url}" download="${name}" target="_blank">⬇ Download</a>
+          <button class="btn-copy" onclick="copyLink('${f.download_url}', this)" title="Copy download link">🔗 Copy</button>
+          <button class="btn-del" onclick="confirmDelete('${escapeJs(f.path)}', '${escapeJs(f.sha)}', this, '${escapeHtml(cleanName)}')" title="Delete file">🗑</button>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  function filterFiles() {
+    renderFiles();
+  }
+
+  // ── Copy link ──
+  async function copyLink(url, btn) {
+    try {
+      await navigator.clipboard.writeText(url);
+      btn.textContent = '✓ Copied!';
+      toast('Link copied to clipboard', 'info');
+      setTimeout(() => { btn.textContent = '🔗 Copy'; }, 2000);
+    } catch {
+      // Fallback
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.textContent = '✓ Copied!';
+      toast('Link copied', 'info');
+      setTimeout(() => { btn.textContent = '🔗 Copy'; }, 2000);
+    }
+  }
+
+  // ── Delete ──
+  function confirmDelete(path, sha, btn, name) {
+    showModal(
+      `Delete "${name}"?`,
+      'This will permanently remove the file from your GitHub repository.',
+      () => deleteFile(path, sha, btn)
+    );
+  }
+
+  async function deleteFile(path, sha, btn) {
+    closeModal();
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${config.user}/${config.repo}/contents/${path}`,
+        {
+          method: 'DELETE',
+          headers: getHeaders(),
+          body: JSON.stringify({ message: `FileBeam: Delete ${path.split('/').pop()}`, sha })
+        }
+      );
+      if (res.ok) {
+        btn.closest('.stored-file').remove();
+        toast('File deleted', 'info');
+        // Remove from allStoredFiles
+        allStoredFiles = allStoredFiles.filter(f => f.path !== path);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err.message || 'Delete failed', 'error');
+        btn.disabled = false; btn.textContent = '🗑';
+      }
+    } catch (e) {
+      toast('Delete error: ' + e.message, 'error');
+      btn.disabled = false; btn.textContent = '🗑';
+    }
+  }
+
+  // ── Modal ──
+  function showModal(title, msg, onConfirm) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-msg').textContent = msg;
+    document.getElementById('modal-confirm').onclick = onConfirm;
+    document.getElementById('modal').classList.add('show');
+  }
+
+  function closeModal() {
+    document.getElementById('modal').classList.remove('show');
+  }
+
+  // Close modal on overlay click
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('modal')) closeModal();
+    });
+  });
+
+  // ── Tabs ──
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('tab-upload').style.display = name === 'upload' ? '' : 'none';
+    document.getElementById('tab-files').style.display = name === 'files' ? '' : 'none';
+    if (name === 'files') loadFiles();
+  }
+
+  // ── Toast ──
+  function toast(msg, type = 'info') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `show ${type}`;
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // ── Helpers ──
+  function toBase64(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function fileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const map = {
+      pdf: '📄', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊',
+      ppt: '📋', pptx: '📋', zip: '🗜', rar: '🗜', '7z': '🗜', tar: '🗜', gz: '🗜',
+      jpg: '🖼', jpeg: '🖼', png: '🖼', gif: '🖼', webp: '🖼', svg: '🖼',
+      mp4: '🎬', mov: '🎬', avi: '🎬', mkv: '🎬', webm: '🎬',
+      mp3: '🎵', wav: '🎵', flac: '🎵', ogg: '🎵',
+      js: '⚙️', ts: '⚙️', py: '🐍', html: '🌐', css: '🎨',
+      txt: '📃', csv: '📊', json: '⚙️', xml: '⚙️', md: '📃',
+      exe: '💻', dmg: '💻', apk: '💻',
+    };
+    return map[ext] || '📦';
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function escapeJs(str) {
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  }
+</script>
+</body>
+</html>
